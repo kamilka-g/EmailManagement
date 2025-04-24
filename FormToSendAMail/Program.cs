@@ -1,44 +1,47 @@
-using MailKit.Net.Smtp;
-using MimeKit;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using FormToSendAMail.Services;
+using Serilog;
 
-namespace FormToSendAMail
+public class Program
 {
-    public class Program
+    public static void Main(string[] args)
     {
-        public static void Main(string[] args)
+        // Konfiguracja Serilog
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.Console()    // Logowanie do konsoli
+            .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day) // Logowanie do pliku (dzienny plik)
+            .CreateLogger();
+
+        var builder = WebApplication.CreateBuilder(args);
+
+        // Dodaj us³ugi do kontenera
+        builder.Services.AddControllersWithViews();
+
+        // Dodaj EmailService jako us³ugê
+        builder.Services.AddSingleton<IEmailService, EmailService>();
+
+        // Dodaj Logger do Dependency Injection
+        builder.Services.AddLogging(loggingBuilder => loggingBuilder.AddSerilog());
+
+        var app = builder.Build();
+
+        // Konfiguracja HTTP request pipeline
+        if (!app.Environment.IsDevelopment())
         {
-            var builder = WebApplication.CreateBuilder(args);
-
-            // Add services to the container.
-            builder.Services.AddControllersWithViews();
-
-            // Dodaj EmailService jako us³ugê
-            builder.Services.AddSingleton<IEmailService, EmailService>();
-
-            var app = builder.Build();
-
-            // Configure the HTTP request pipeline.
-            if (!app.Environment.IsDevelopment())
-            {
-                app.UseExceptionHandler("/Home/Error");
-                app.UseHsts();
-            }
-
-            app.UseHttpsRedirection();
-            app.UseStaticFiles();
-
-            app.UseRouting();
-
-            app.UseAuthorization();
-
-            app.MapControllerRoute(
-                name: "default",
-                pattern: "{controller=Home}/{action=Index}/{id?}");
-
-            app.Run();
+            app.UseExceptionHandler("/Home/Error");
+            app.UseHsts();
         }
+
+        app.UseHttpsRedirection();
+        app.UseStaticFiles();
+
+        app.UseRouting();
+
+        app.UseAuthorization();
+
+        app.MapControllerRoute(
+            name: "default",
+            pattern: "{controller=Home}/{action=Index}/{id?}");
+
+        app.Run();
     }
 }
